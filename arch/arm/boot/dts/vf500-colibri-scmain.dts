@@ -1,0 +1,101 @@
+/*
+ * Copyright 2017 Toradex
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+
+/dts-v1/;
+#include "vf500-colibri.dtsi"
+#include "vf-colibri-dual-eth.dtsi"
+#include <dt-bindings/input/linux-event-codes.h>
+
+/ {
+	model = "Toradex Colibri VF50 on SCMain Board";
+	compatible = "toradex,vf500-colibri_vf50-on-scmain", "toradex,vf500-colibri_vf50", "fsl,vf500";
+// TODO 
+};
+
+
+&fec0 {
+	phy-supply = <&reg_module_3v3>;
+};
+
+
+&can0 {
+       status = "okay";
+};
+
+&can1 {
+       status = "okay";
+};
+
+/* Disable i2C0 because of CAN */
+&i2c0 {
+	status = "disabled";
+};
+
+
+/* chipcard */
+&uart1 {
+    compatible = "nxp,iso7816";
+    linux,iso7816-enabled-at-boot-time;
+
+    /* claim pwm for asynchronous ISO/IEC 7816 chipcards */
+    pwms = <&pwm0 7 0 0>;
+    pwm-names = "pwm-clk";
+
+	/* synchronous chipcards won't need pwm clocking */
+
+    status = "okay";
+};
+
+/* something else */
+&uart2 {
+};
+
+/* something without dma */
+&uart3 {
+	dma-names = "", "";
+};
+
+/* something without dma */
+&uart4 {
+	dma-names = "", "";
+};
+
+/* something, disable SDHC because of uart4 uses the same SODIMM pins 51,53 */
+&esdhc1 {
+	status = "disabled";
+};
+
+
+/* see 
+ * http://developer.toradex.com/device-tree-customization#Vybrid_based_Modules
+ */
+&iomuxc {
+	vf610-colibri {
+    	pinctrl_uart1: uart1grp {
+        	fsl,pins = <
+            	VF610_PAD_PTB4__UART1_TX 0x26df /* leaving IO to UART, */
+												/* orig: 0x21a3        */
+//              VF610_PAD_PTB4__GPIO_26  0x26df /* using IO as GPIO (debug) */
+                VF610_PAD_PTB5__GPIO_27  0x22eb /* EN */
+                VF610_PAD_PTB6__GPIO_28  0x22eb /* RST */
+//              VF610_PAD_PTB7__GPIO_29  0x22eb /* CLK as GPIO, or PWM */
+            >;
+        };
+
+        pinctrl_uart3: uart3grp {
+			fsl,pins = <
+				/* the other (of two possible) uart3 pin configurations */
+				/* is used (see vf-colibri-dual-eth.dtsi) */
+				VF610_PAD_PTA30__UART3_TX	0x21a2      // SODIMM 37
+				VF610_PAD_PTA31__UART3_RX   0x21a1      // SODIMM 29
+			>;
+		};
+	};
+};
+
