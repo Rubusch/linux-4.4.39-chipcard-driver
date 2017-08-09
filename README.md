@@ -11,7 +11,7 @@ INTRO - What is this?
 The code here illustrates how generally a chipcard driver via UART can be
 implemented. 
 
-It
+It...
  * is NOT a full driver,
  * does not come as patch set (as it would be common), but as copy/paste source
    Personally I think this is easier to read for others and makes it more
@@ -68,9 +68,8 @@ SETTING UP TFTP
 I'm running the kernel+dtb via tftp. Alternatively build the regular kernel+dtb
 image (fit) and flash it to the target. For the tftp setup run the folling:
 $ export TFTP_DIRECTORY="/opt/tftpboot"
-$ cd ${TFTP_DIRECTORY}
-$ cp ${KERNEL_DIRECTORY}/arch/arm/boot/zImage .
-$ cp ${KERNEL_DIRECTORY}/arch/arm/boot/dts/*.dtb ./dts/
+$ cp ./arch/arm/boot/zImage ${TFTP_DIRECTORY}/
+$ cp ./arch/arm/boot/dts/*.dtb ${TFTP_DIRECTORY}/dts/
 
 
 
