@@ -68,9 +68,8 @@ SETTING UP TFTP
 I'm running the kernel+dtb via tftp. Alternatively build the regular kernel+dtb
 image (fit) and flash it to the target. For the tftp setup run the folling:
 $ export TFTP_DIRECTORY="/opt/tftpboot"
-$ cd ${TFTP_DIRECTORY}
-$ cp ${KERNEL_DIRECTORY}/arch/arm/boot/zImage .
-$ cp ${KERNEL_DIRECTORY}/arch/arm/boot/dts/*.dtb ./dts/
+$ cp ./arch/arm/boot/zImage ${TFTP_DIRECTORY}/
+$ cp ./arch/arm/boot/dts/*.dtb ${TFTP_DIRECTORY}/dts/
 
 
 
