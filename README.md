@@ -271,22 +271,23 @@ format are described in e.g. some ALPAR standard or the cardreader's datasheet.
 # LINKS
 
 ### Theory
-[Smartcard basics] (http://www.smartcardbasics.com/smart-card-types.html "Theory about smartcards")
-[Wikipedia on Chipcards](https://en.wikipedia.org/wiki/Smart_card "General information on smartcards")
-[Wikipedia on ATR](https://en.wikipedia.org/wiki/Answer_to_reset "ATR explained, find more details in the ISO/IEC 7816")
-[List of ATR sequences for chipcards](https://eftlab.co.uk/index.php/site-map/knowledge-base/171-atr-list-full "Identify a card type by ATR sequence")
+
+ - [Smartcard basics](http://www.smartcardbasics.com/smart-card-types.html "Theory about smartcards")
+ - [Wikipedia on Chipcards](https://en.wikipedia.org/wiki/Smart_card "General information on smartcards")
+ - [Wikipedia on ATR](https://en.wikipedia.org/wiki/Answer_to_reset "ATR explained, find more details in the ISO/IEC 7816")
+ - [List of ATR sequences for chipcards](https://eftlab.co.uk/index.php/site-map/knowledge-base/171-atr-list-full "Identify a card type by ATR sequence")
 
 ### Tools
-[Saleae Logic](https://www.saleae.com/ "A simple logic analyzer")
+ - [Saleae Logic](https://www.saleae.com/ "A simple logic analyzer")
 
 ### Datasheets
-[Toradex VF50 Colibri Datasheet](http://docs.toradex.com/101355-colibri-vf50-datasheet.pdf "Toradex VF50 Colibri")
-[NXP VFxxx Controller Reference Manual](http://www.nxp.com/docs/en/reference-manual/VFXXXRM.pdf "NXP VF50 Reference Manual")
-[chipcard FM4442](http://www.datasheetlib.com/datasheet/1270957/fm4442_shanghai-fudan-microelectronics.html "Fudan 8k bit chipcard")
-[chipcard SLE5542](http://www.datasheetlib.com/datasheet/788448/sle5542_infineon-technologies.html "Infenion 8k bit chipcard")
-[chipcard FM4428](http://www.datasheetlib.com/datasheet/1270958/fm4428_shanghai-fudan-microelectronics.html "Fudan 1k bit chipcard")
-[chipcard SLE5528](http://www.datasheetlib.com/datasheet/788451/sle5528_infineon-technologies.html "Infenion 1k bit chipcard")
-[chipcard AT88SC25616C](http://www.datasheetlib.com/datasheet/212456/at88sc25616c_atmel-corporation.html "Atmel various size asynchronous ISO/IEC 7816 chipcard")
+ - [Toradex VF50 Colibri Datasheet](http://docs.toradex.com/101355-colibri-vf50-datasheet.pdf "Toradex VF50 Colibri")
+ - [NXP VFxxx Controller Reference Manual](http://www.nxp.com/docs/en/reference-manual/VFXXXRM.pdf "NXP VF50 Reference Manual")
+ - [chipcard FM4442](http://www.datasheetlib.com/datasheet/1270957/fm4442_shanghai-fudan-microelectronics.html "Fudan 8k bit chipcard")
+ - [chipcard SLE5542](http://www.datasheetlib.com/datasheet/788448/sle5542_infineon-technologies.html "Infenion 8k bit chipcard")
+ - [chipcard FM4428](http://www.datasheetlib.com/datasheet/1270958/fm4428_shanghai-fudan-microelectronics.html "Fudan 1k bit chipcard")
+ - [chipcard SLE5528](http://www.datasheetlib.com/datasheet/788451/sle5528_infineon-technologies.html "Infenion 1k bit chipcard")
+ - [chipcard AT88SC25616C](http://www.datasheetlib.com/datasheet/212456/at88sc25616c_atmel-corporation.html "Atmel various size asynchronous ISO/IEC 7816 chipcard")
 
 
 
