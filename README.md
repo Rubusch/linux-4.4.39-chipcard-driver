@@ -44,12 +44,12 @@ $ export KERNEL_DIRECTORY="/opt/repos/rubusclo/YOCTO/gc__kernel/linux-4.4.patche
 ```
 
 Force rebuild, by cleaning
-```bash
+```shell
 $ ARCH=arm CROSS_COMPILE=arm-poky-linux-gnueabi- make clean
 ```
 
 Prepare kernel local version (identification!! )
-```shell session
+```shell
 $ cp arch/arm/configs/iso7816_chipcard_defconfig ./.config
 $ sed -i '/CONFIG_LOCALVERSION=/s/.*/CONFIG_LOCALVERSION="-20170607-chipcard05"/' ./.config
 ```
@@ -59,14 +59,14 @@ Just open "menuconfig", then close and save it
 	drivers -> character devices -> serial -> fsl lpuart and iso7816 drivers
 when using pwm, then check also the corresponding driver
 	drivers -> fsl pwm]
-```bash
-ARCH=arm CROSS_COMPILE=arm-poky-linux-gnueabi- make menuconfig
+```shell
+$ ARCH=arm CROSS_COMPILE=arm-poky-linux-gnueabi- make menuconfig
 ```
 
 Compile zImage and dts manually
 (or integrate it into your yocto layer generating the target images right away)
-```bash
-time ARCH=arm CROSS_COMPILE=arm-poky-linux-gnueabi- make zImage vf500-colibri-scmain.dtb
+```shell
+$ time ARCH=arm CROSS_COMPILE=arm-poky-linux-gnueabi- make zImage vf500-colibri-scmain.dtb
 ```
 
 
@@ -76,10 +76,10 @@ time ARCH=arm CROSS_COMPILE=arm-poky-linux-gnueabi- make zImage vf500-colibri-sc
 
 I'm running the kernel+dtb via tftp. Alternatively build the regular kernel+dtb
 image (fit) and flash it to the target. For the tftp setup run the folling:
-```bash
-export TFTP_DIRECTORY="/opt/tftpboot"
-cp ./arch/arm/boot/zImage ${TFTP_DIRECTORY}/
-cp ./arch/arm/boot/dts/*.dtb ${TFTP_DIRECTORY}/dts/
+```shell
+$ export TFTP_DIRECTORY="/opt/tftpboot"
+$ cp ./arch/arm/boot/zImage ${TFTP_DIRECTORY}/
+$ cp ./arch/arm/boot/dts/*.dtb ${TFTP_DIRECTORY}/dts/
 ```
 
 
@@ -91,15 +91,15 @@ cp ./arch/arm/boot/dts/*.dtb ${TFTP_DIRECTORY}/dts/
 Reboot target, stop at uboot, set up the environment.
 On the tftp server set up to something, e.g.
 ```bash
-sudo vi /etc/default/tftpd-hpa
-#    (...)
+$ sudo vi /etc/default/tftpd-hpa
+    (...)
     TFTP_DIRECTORY="/opt/repos/rubusclo/YOCTO/gc__kernel/linux-4.4.patched__develop/arch/arm/boot"
-#    (...)
+    (...)
 ```
 
 the kernel was built for ARM, with LOADADDR 0x81000000
 ```shell
-# network:
+## network:
 => setenv ipaddr 10.12.34.56
 => setenv serverip 10.12.34.55
 => setenv netmask 255.255.252.0
@@ -109,18 +109,18 @@ the kernel was built for ARM, with LOADADDR 0x81000000
 => setenv netdev eth0
 => setenv addip 'setenv bootargs ${bootargs} ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}:${hostname}:${netdev}:off panic=1'
 
-# kernel: set address and name of the kernel uImage file
-# the kernel here is a FIT image (uImage + FDT)
+## kernel: set address and name of the kernel uImage file
+## the kernel here is a FIT image (uImage + FDT)
 => setenv kernel_addr 0x81000000
 => setenv kernel_file zImage
-# test with:
-# => tftp ${kernel_addr} ${kernel_file}
+## test with:
+## => tftp ${kernel_addr} ${kernel_file}
 
-# dtb:
+## dtb:
 => setenv fdt_addr 0x82000000
 => setenv fdt_file dts/vf500-colibri-scmain.dtb
-# test
-# => tftp ${fdt_addr} ${fdt_file}
+## test
+## => tftp ${fdt_addr} ${fdt_file}
 
 ## console:
 => setenv console ttyLP0
@@ -192,9 +192,9 @@ resends.
 
 # DEVICE TREE SETUP
 
-### Driver used by default:
+### Driver used by default by linux:
 
-+ drivers/tty/serial/fsl_lpuart.c
+ - **drivers/tty/serial/fsl_lpuart.c**
 
 
 ### Which UART is used?
