@@ -38,20 +38,20 @@ patched for the VF50 board, via yocto layer.
 
 Setup environment variables for toolchain
 (the path where e.g. arm-poky-linux-gnueabi-gcc can be found)
-```bash
-export PATH=$PATH:/opt/repos/rubusclo/YOCTO/gc__sdk/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
-export KERNEL_DIRECTORY="/opt/repos/rubusclo/YOCTO/gc__kernel/linux-4.4.patched__develop"
+```shell
+$ export PATH=$PATH:/opt/repos/rubusclo/YOCTO/gc__sdk/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
+$ export KERNEL_DIRECTORY="/opt/repos/rubusclo/YOCTO/gc__kernel/linux-4.4.patched__develop"
 ```
 
 Force rebuild, by cleaning
 ```bash
-ARCH=arm CROSS_COMPILE=arm-poky-linux-gnueabi- make clean
+$ ARCH=arm CROSS_COMPILE=arm-poky-linux-gnueabi- make clean
 ```
 
 Prepare kernel local version (identification!! )
-```bash
-cp arch/arm/configs/iso7816_chipcard_defconfig ./.config
-sed -i '/CONFIG_LOCALVERSION=/s/.*/CONFIG_LOCALVERSION="-20170607-chipcard05"/' ./.config
+```shell session
+$ cp arch/arm/configs/iso7816_chipcard_defconfig ./.config
+$ sed -i '/CONFIG_LOCALVERSION=/s/.*/CONFIG_LOCALVERSION="-20170607-chipcard05"/' ./.config
 ```
 
 Just open "menuconfig", then close and save it
