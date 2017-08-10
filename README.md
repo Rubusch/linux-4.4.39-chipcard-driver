@@ -152,6 +152,7 @@ This project deals with Contact Chipcards.
 
 ### Signal Contacts Chipcard:
 
+| left      | right      |
 | --------- | ---------- |
 | VCC       | GND        |
 | RST       | VPP (opt.) |
@@ -212,15 +213,14 @@ The interface naming varies depending on the documentation:
 
 In a summary the list of GPIOs boils down to the following table
 
-| SODIMM | Toradex    | VF50 | VF50       | Colibri                 | Product  |
-| PIN    | Name       | GPIO | Signal     | GPIO                    | IO Name  |
-| ------ | ---------- | ---- | ---------- | ----------------------- | -------- |
-| 19     | UART_C_RX  | PTB5 | SCI1_RX    | VF610_PAD_PTB5__GPIO_27 | Chip_EN  |
-| 21     | UART_C_TX  | PTB4 | SCI1_TX    | VF610_PAD_PTB4__GPIO_26 | Chip_IO  |
-| 81     | UART_C_CTS | PTB7 | SCI1_CTS   | VF610_PAD_PTB7__GPIO_29 | Chip_CLK |
-|        |            |      |            | alternatively PWM set   |          |
-|        |            |      |            | to this GPIO            |          |
-| 94     | UART_C_RTS | PTB6 | SCI1_RTS   | VF610_PAD_PTB6__GPIO_28 | Chip_RST |
+| SODIMM PIN | Toradex Name | VF50 GPIO | VF50 Signal | Colibri GPIO            | Product IO Name |
+| ---------- | ------------ | --------- | ----------- | ----------------------- | --------------- |
+| 19         | UART_C_RX    | PTB5      | SCI1_RX     | VF610_PAD_PTB5__GPIO_27 | Chip_EN         |
+| 21         | UART_C_TX    | PTB4      | SCI1_TX     | VF610_PAD_PTB4__GPIO_26 | Chip_IO         |
+| 81         | UART_C_CTS   | PTB7      | SCI1_CTS    | VF610_PAD_PTB7__GPIO_29 | Chip_CLK        |
+|            |              |           |             | alternatively PWM set   |                 |
+|            |              |           |             | to this GPIO            |                 |
+| 94         | UART_C_RTS   | PTB6      | SCI1_RTS    | VF610_PAD_PTB6__GPIO_28 | Chip_RST        |
 
 
 
