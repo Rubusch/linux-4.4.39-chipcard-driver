@@ -49,7 +49,6 @@
 #include <linux/slab.h>
 #include <linux/tty_flip.h>
 
-#include <linux/pwm.h>
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
 
@@ -64,29 +63,18 @@
 #define DEV_NAME                "ttyLP"
 #define ISO7816_UART_NR         6
 
-
-// TODO why is this removed automatically from kconfig?              
-// FIXME
-//#define CONFIG_SERIAL_ISO7816_CONSOLE 'y'
-
-
 /* gpios */
+/* - clk by bitbanging */
+/* - io is left to uart */
+/* - en can be enabled by default (not done) */
 
-//#define ISO7816_GPIO_EN         0
-//#define ISO7816_GPIO_CLK	1
-//#define ISO7816_GPIO_RST	2
-//#define ISO7816_GPIO_IO         3
-//
-//#define ISO7816_NUM_GPIOS       4
-
-// reduced set
-// - clk is done by pwm
-// - io is left to uart
-// - en can be enabled by default (not done)
 #define ISO7816_GPIO_EN         0
-#define ISO7816_GPIO_RST	1
+#define ISO7816_GPIO_CLK	1
+#define ISO7816_GPIO_RST	2
+//#define ISO7816_GPIO_IO         3
 
-#define ISO7816_NUM_GPIOS       2
+#define ISO7816_NUM_GPIOS       3
+
 
 
 /* debug hacks */
@@ -140,9 +128,6 @@ struct iso7816_port {
 //	unsigned int		dma_tx_nents;
 //	wait_queue_head_t	dma_wait;
  	unsigned		gpio[ISO7816_NUM_GPIOS];
-	struct pwm_device       *pwm;
-	int                     pwm_id;
-	bool                    is_pwm_legacy;
 };
 
 static const struct of_device_id iso7816_dt_ids[] = {
@@ -482,7 +467,7 @@ static int iso7816_cc_init_gpios(struct device_node *np,
 	// init gpio values
 	// TODO is this needed, or is there a better solution?
 	ccport->gpio[ISO7816_GPIO_EN] = 27; // enable
-//	ccport->gpio[ISO7816_GPIO_CLK] = 29; // gpio clock
+	ccport->gpio[ISO7816_GPIO_CLK] = 29; // gpio clock
 	ccport->gpio[ISO7816_GPIO_RST] = 28; // reset
 //	ccport->gpio[ISO7816_GPIO_IO] = 26; // io   
 
@@ -831,31 +816,20 @@ static int iso7816_cc_initialize(struct iso7816_port *ccport){
 static int iso7816_cc_atr(struct iso7816_port *ccport)
 {
 //	unsigned char /* cr2, */ cr3, sr2, cr7816;
-//	int /*idx,*/ tictacs;
-//	unsigned long flags;
-//	unsigned char is7816;
-	int pwm_period, pwm_duty_cycle;
+	int /*idx,*/ tictacs;
+	unsigned long flags;
+	unsigned char is7816;
 
 	printk(KERN_ERR "YYY %s(): started\n", __func__);
 
-//	local_irq_save(flags);
+	local_irq_save(flags);
 
 	/* init */
 	gpio_set_value(ccport->gpio[ISO7816_GPIO_RST], 0);
-//	tictacs=100;
+	tictacs=100;
 
 	/* turn on clock */
-//	printk(KERN_ERR "YYY %s(): init pwm\n", __func__);
-	pwm_duty_cycle = 143;
-	pwm_period = 286;
-
-//	printk(KERN_ERR "YYY %s(): set duty_cycle: '%d', pwm_period: '%d'\n", __func__, pwm_duty_cycle, pwm_period);
-	pwm_config(ccport->pwm, pwm_duty_cycle, pwm_period);
-
-//	printk(KERN_ERR "YYY %s(): enable\n", __func__);
-	pwm_enable(ccport->pwm);
-
-//	printk(KERN_ERR "YYY %s(): set reset to high\n", __func__);
+	printk(KERN_ERR "YYY %s(): set reset to high\n", __func__);
 	gpio_set_value(ccport->gpio[ISO7816_GPIO_RST], 1); // RST to H after 400 clock cycles
 
 	// tic tic tic
@@ -869,9 +843,9 @@ static int iso7816_cc_atr(struct iso7816_port *ccport)
  		udelay(tictacs);
  	}
 /*/
-//	mdelay(10);
+	mdelay(10);
 
-//	local_irq_restore(flags);           
+	local_irq_restore(flags);           
 
 	/* additional */
 //	mdelay(10);
@@ -1217,27 +1191,6 @@ DBG_FUNCNAME
 	spin_unlock_irqrestore(&port->lock, flags);
 
 	devm_free_irq(port->dev, port->irq, ccport);
-
-	/* turn off clock, for startup a new ATR will be needed */
-//	pwm_config(ccport->pwm, 0, pwm_period);
-//	pwm_disable(ccport->pwm);
-
-	
-// TODO currently no dma        	
-//	if (ccport->iso7816_dma_rx_use) {
-//		del_timer_sync(&ccport->iso7816_timer);
-//		iso7816_dma_rx_free(&ccport->port);
-//	}
-//
-//	if (ccport->iso7816_dma_tx_use) {
-//		if (wait_event_interruptible(ccport->dma_wait,
-//			!ccport->dma_tx_in_progress) != false) {
-//			ccport->dma_tx_in_progress = false;
-//			dmaengine_terminate_all(ccport->dma_tx_chan);
-//		}
-//
-//		iso7816_stop_tx(port);
-//	}
 }
 
 
@@ -2233,7 +2186,7 @@ static struct uart_driver iso7816_reg = {
  */
 static int iso7816_probe(struct platform_device *pdev)
 {
-	struct device_node *np = pdev->dev.of_node; // TODO check to set up gpios from this function??                           
+	struct device_node *np = pdev->dev.of_node;
 	struct iso7816_port *ccport;
 	struct resource *res;
 	int ret;
@@ -2244,40 +2197,26 @@ static int iso7816_probe(struct platform_device *pdev)
 	
 	DBG_FUNCNAME
 	
-
 	if (!ccport){
-//                dev_err(&pdev->dev, "YYY - ISO7816: failed to get port, %d\n", ret);  
 		pr_err( "YYY - ISO7816: failed to get port, %d\n", ret);
 		return -ENOMEM;
 	}
 
 	/* device */
-// TODO which version of obtaining np is better?	
-//	do {
-//		np = of_find_node_by_type( np, "serial"); // TODO check type            
-//		if (!np)
-//			return -ENODEV;
-//
-//		if (!of_device_is_compatible(np, "nxp,iso7816")) {
-//			--idx;
-//		}
-//	} while (++idx != co->index);
-	
 	ret = of_alias_get_id(np, "serial");
 	if (ret < 0) {
-//		dev_err(&pdev->dev, "YYY - ISO7816: failed to get alias id, errno %d\n", ret);  
 		pr_err( "YYY - ISO7816: failed to get alias id, errno %d\n", ret);
 		return ret;
 	}
 	ccport->port.line = ret;
 
 	/* gpios */
-	printk(KERN_ERR "YYY %s(): setting gpios...started\n", __func__);   
-	ret = iso7816_cc_init_gpios(np, ccport); // XXX                               
+	printk(KERN_ERR "YYY %s(): setting gpios...started\n", __func__);
+	ret = iso7816_cc_init_gpios(np, ccport);
 	of_node_put(np);
 	if (ret) {
-		printk(KERN_ERR "YYY %s(): setting gpios...FAILED\n", __func__);   
-                pr_err( "YYY - ISO7816: initialization of gpios failed, %d\n", ret);  
+		printk(KERN_ERR "YYY %s(): setting gpios...FAILED\n", __func__);
+                pr_err( "YYY - ISO7816: initialization of gpios failed, %d\n", ret);
 		return ret;
 	}
 	printk(KERN_ERR "YYY %s(): probing gpios...done\n", __func__);
@@ -2286,29 +2225,6 @@ static int iso7816_probe(struct platform_device *pdev)
 	printk( KERN_ERR "YYY %s(): enabling card reader...", __func__);
        	gpio_set_value(ccport->gpio[ISO7816_GPIO_EN], 1);
 	printk( KERN_ERR "YYY %s(): done\n", __func__);
-
-	/* pwm clock initialization */
-	ccport->is_pwm_legacy = false;
-	ccport->pwm_id = 7;
-	ccport->pwm = devm_pwm_get(&pdev->dev, NULL); // TODO somehow pass pwm_id
-//	ccport->pwm = devm_pwm_get(&pdev->dev, ccport->pwm_id); // TODO somehow pass pwm_id
-// TODO configure ccport->pwm	
-	if (IS_ERR(ccport->pwm) && PTR_ERR(ccport->pwm) != -EPROBE_DEFER
-	    && !pdev->dev.of_node) {
-		dev_err( &pdev->dev, "YYY - unable to request PWM, trying legacy API\n");
-		ccport->is_pwm_legacy = true;
-		ccport->pwm = pwm_request(ccport->pwm_id, "pwm-clk");
-	}
-	if (IS_ERR(ccport->pwm)) {
-		ret = PTR_ERR(ccport->pwm);
-		if (ret != -EPROBE_DEFER) {
-			dev_err(&pdev->dev, "YYY - unable to request PWM\n");
-		}
-		dev_err(&pdev->dev, "YYY - probe () FAILED\n");
-		return ret;
-	} else {
-		printk( KERN_ERR "YYY %s(): pwm successfully requested!!!\n", __func__);
-	}
 
 	/* ccport->port - membase, device, pops,... */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -2324,21 +2240,15 @@ static int iso7816_probe(struct platform_device *pdev)
 	ccport->port.ops = &iso7816_pops;
 	ccport->port.flags = UPF_BOOT_AUTOCONF;
 
-// TODO in case of using ioctl  	
-//	ccport->port.rs485_config = iso7816_config_rs485;
-//	ccport->port.iso7816_config = // TODO check if this approach makes sense YYY
-
 	/* ccport->clk */
 	ccport->clk = devm_clk_get(&pdev->dev, "ipg");
 	if (IS_ERR(ccport->clk)) {
 		ret = PTR_ERR(ccport->clk);
-//		dev_err(&pdev->dev, "ISO7816: failed to get uart clk: %d\n", ret);
 		pr_err( "ISO7816: failed to get uart clk: %d\n", ret);
 		return ret;
 	}
 	ret = clk_prepare_enable(ccport->clk);
 	if (ret) {
-//		dev_err(&pdev->dev, "ISO7816: failed to enable uart clk: %d\n", ret); // TODO rm         
 		pr_err( "ISO7816: failed to enable uart clk: %d\n", ret);
 		return ret;
 	}
@@ -2436,9 +2346,6 @@ static int iso7816_remove(struct platform_device *pdev)
 //		dma_release_channel(ccport->dma_rx_chan);
 
 // TODO gpio_free();
-// TODO pwm_free();
-	if (ccport->is_pwm_legacy)
-		pwm_free(ccport->pwm);
 
 	return 0;
 }
