@@ -103,7 +103,6 @@ static void printb( const char *funcname, unsigned char input, char *message)
 static bool nodma = false; // currently no dma support
 
 struct iso7816_port {
-// TODO 	
 	struct uart_port	port;
 	struct clk		*clk;
 	unsigned int		txfifo_size;
@@ -145,10 +144,8 @@ MODULE_DEVICE_TABLE(of, iso7816_dt_ids);
 
 static void iso7816_transmit_buffer(struct iso7816_port *ccport);
 static irqreturn_t iso7816_int(int irq, void *dev_id);
-
-static void iso7816_console_putchar(struct uart_port *port, int ch); 
-//static void iso7816_cc_command(struct iso7816_port *ccport, const unsigned char *str, unsigned int count); // TODO not used  
-static void iso7816_start_tx(struct uart_port *port); 
+static void iso7816_console_putchar(struct uart_port *port, int ch);
+static void iso7816_start_tx(struct uart_port *port);
 
 /**
  * setup watermark
@@ -182,8 +179,6 @@ static void iso7816_setup_watermark(struct iso7816_port *ccport)
 		writeb(UARTSFIFO_RXUF, ccport->port.membase + UARTSFIFO);
 	}
 	writeb(0, ccport->port.membase + UARTTWFIFO);
-// TODO needed? (receiver is disabled)	
-//	writeb(1, ccport->port.membase + UARTRWFIFO);
 
 	/* Restore cr2 */
 	writeb(cr2_saved, ccport->port.membase + UARTCR2);
@@ -192,6 +187,12 @@ static void iso7816_setup_watermark(struct iso7816_port *ccport)
 
 /* cc functions */
 
+/**
+ * The acme reporting monster function!
+ *
+ * This function shall print out value interpretation by the datasheet of the
+ * major registers documented for the NXP UART and ISO7816 mode, respectively.
+ */
 static void iso7816_cc_report(struct iso7816_port *ccport)
 {
 	unsigned int tmp, val, /*baud,*/ sbr/*, brfa*/;
@@ -203,7 +204,6 @@ static void iso7816_cc_report(struct iso7816_port *ccport)
 	char* marker = "YYY";
 
         printk(KERN_ERR "%s %s(): Reporting UART Registers\n", __func__, marker);
-
 
 	/* bdh */
 	bdh = readb(ccport->port.membase + UARTBDH);
@@ -410,7 +410,6 @@ static void iso7816_cc_report(struct iso7816_port *ccport)
  * en - enable (power on)
  * rst - the reset line
  */
-// TODO former function name was iso7816_init_port()    
 static int iso7816_cc_init_gpios(struct device_node *np,
 				 struct iso7816_port *ccport)
 {
@@ -420,67 +419,20 @@ static int iso7816_cc_init_gpios(struct device_node *np,
 	
 	DBG_FUNCNAME;
 	
-
-/* driver clock */
-// TODO check for "clock" property, and how to set it up (taken from cpm uart), alternatively write a probe() and run ccport->clk = devm_clk_get(&pdev->dev, "ipg"); there      	
-//	data = of_get_property(np, "clock", NULL);
-//	if (data) {
-//		struct clk *clk = clk_get(NULL, (const char*)data);
-//		if (!IS_ERR(clk))
-//			ccport->clk = clk;
-//	}
-// TODO further needed at all? or rm    	
-//	if (!ccport->clk) {
-//		data = of_get_property(np, "fsl,cpm-brg", &len);
-//		if (!data || len != 4) {
-//			printk(KERN_ERR "ISO7816 %s has no/invalid "
-//			                "fsl,??? property.\n", np->name);
-//			return -EINVAL;
-//		}
-//		ccport->brg = *data;
-//	}
-
-	/* fifo setup */
-// TODO check to do this here or in a separate function iso7816_startup()
-//	pinfo->tx_nrfifos = TX_NUM_FIFO;
-// 	pinfo->tx_fifosize = TX_BUF_SIZE;
-// 	pinfo->rx_nrfifos = RX_NUM_FIFO;
-// 	pinfo->rx_fifosize = RX_BUF_SIZE;
-// TODO      
-
-	/* ccport->port setup */
-// TODO check if this is matter of iso7816_probe() like function  	
-// 	pinfo->port.uartclk = ppc_proc_freq;
-// 	pinfo->port.mapbase = (unsigned long)mem;
-// 	pinfo->port.type = PORT_CPM;
-// 	pinfo->port.ops = &cpm_uart_pops,
-// 	pinfo->port.iotype = UPIO_MEM;
-// 	pinfo->port.fifosize = pinfo->tx_nrfifos * pinfo->tx_fifosize;
-// 	spin_lock_init(&pinfo->port.lock);
-// 	pinfo->port.irq = irq_of_parse_and_map(np, 0);
-// 	if (pinfo->port.irq == NO_IRQ) {
-// 		ret = -EINVAL;
-// 		goto out_pram;
-// 	}
-// TODO incl. uartclk = ppc_proc_freq	  
-
-	// init gpio values
-	// TODO is this needed, or is there a better solution?
-	ccport->gpio[ISO7816_GPIO_EN] = 27; // enable
+	// init hardcoded gpio values
+	ccport->gpio[ISO7816_GPIO_EN] = 27;  // enable
 	ccport->gpio[ISO7816_GPIO_CLK] = 29; // gpio clock
 	ccport->gpio[ISO7816_GPIO_RST] = 28; // reset
-//	ccport->gpio[ISO7816_GPIO_IO] = 26; // io   
+//	ccport->gpio[ISO7816_GPIO_IO] = 26;  // io
 
-	printk(KERN_ERR "YYY %s(): starting loop for gpios... \n", __func__);   
-//*
+	printk(KERN_ERR "YYY %s(): starting loop for gpios... \n", __func__);
+
         for (idx = 0; idx < ISO7816_NUM_GPIOS; ++idx) {
-printk(KERN_ERR "YYY %s(): %d. gpio\n", __func__, idx);   		
-//		ccport->gpio[idx] = -1; // TODO rm
-//		gpio = of_get_gpio( np, idx); // TODO check or rm
+		printk(KERN_ERR "YYY %s(): %d. gpio\n", __func__, idx);
 		gpio = ccport->gpio[idx];
 
 		if (gpio_is_valid(gpio)) {
-			ret = gpio_request( gpio, gpionames[idx]); // TODO check if this is valid                                                 
+			ret = gpio_request( gpio, gpionames[idx]);
 			if (ret) {
 				pr_err( "ISO7816: can't request gpio #%d: %d\n", idx, ret);
 				continue; // TODO: alternatively cancel here...
@@ -525,18 +477,6 @@ static int iso7816_cc_initialize(struct iso7816_port *ccport){
 	}
 	printk(KERN_ERR "YYY %s() YYY\n", __func__);
 
-	
-//printk(KERN_ERR "YYY %s(): return - DISABLED!\n", __func__);
-//return 0;
-	
-
-// TODO iso7816.c has no iso781632	
-//	if (ccport->iso781632) {
-//		/* NOTE: this is not valid for 32-bit versions! */
-//		printk(KERN_ERR "ISO7816: %s() does not work for 32-bit architecture\n", __func__);
-//		return -1;
-//	}
-
 	/* preset TTYPE behaviour - according to ISO-7816 init in datasheet */
 	uartc7816_ttype = 0;
 
@@ -548,7 +488,7 @@ static int iso7816_cc_initialize(struct iso7816_port *ccport){
 	uartc7816_anack = uartsr1_or;
 
 	/* turn off dma */
-	nodma = true; // YYY TODO experimental               
+	nodma = true;
 
 	/* 1. */
 
@@ -569,8 +509,6 @@ static int iso7816_cc_initialize(struct iso7816_port *ccport){
 	bdh = readb(ccport->port.membase + UARTBDH);
 //	bdh |= UARTBDH_RXEDGIE; /* set rx input active edge interrupt enable */ //FIXME: NOISE, too many interrupts issue   
 	bdh &= ~UARTBDH_SBR; /* reset baud bits */
-
-
 	
 //	sbr = ccport->port.uartclk / (16 * baud);
 //	sbr = baud; FIXME
@@ -594,12 +532,10 @@ static int iso7816_cc_initialize(struct iso7816_port *ccport){
 	/* CR4 - clear MAEN1, MAEN2 and 10-bit mode */
 	cr4 &= 0x00;
 
-
 	
 	/* baud rate fine adjust */
 //	brfa |= ((ccport->port.uartclk - (16 * sbr * baud)) * 2) / baud;
 	
-
 
 	brfa = 0x0;
 	cr4 |= (brfa & UARTCR4_BRFA); /* MAEN1, MAEN2 and 10-bit Mode select (M10) must be cleared for ISO7816, thus mask 0x1F */
@@ -718,15 +654,13 @@ static int iso7816_cc_initialize(struct iso7816_port *ccport){
 		/* or as stream (i.e. 0) */
 		cr7816 &= ~UARTCR7816_TTYPE;
 	}
-	                                                                                              
-	
-// XXX
-// TODO for DEBUGGING turned OFF
+
+	/*********************************************************/
+	/* !!! turn on UART's ISO/IEC 7816 support mode HERE !!! */
+	/*********************************************************/
 	cr7816 |= UARTC7816_ISO_7816E; /* ISO-7816 functionality enabled */
 	writeb(cr7816, ccport->port.membase + UARTCR7816);
-// XXX
-	
-                                                                                                      
+
 	cr7816 = readb( ccport->port.membase + UARTCR7816);
 	printb(__func__, cr7816, "cr7816, [0xRRR11101]\n");
 
@@ -802,8 +736,7 @@ static int iso7816_cc_initialize(struct iso7816_port *ccport){
 	printb(__func__, cr2, "cr2, [0xxRx01100]\n");
 
 	/* addtional steps */
-// DEBUGGING
-
+        // DEBUGGING
 
 	printk(KERN_ERR "YYY %s: ~~~ ISO7816 INITIALIZATION DONE ~~~\n", __func__);
 
@@ -816,9 +749,9 @@ static int iso7816_cc_initialize(struct iso7816_port *ccport){
 static int iso7816_cc_atr(struct iso7816_port *ccport)
 {
 //	unsigned char /* cr2, */ cr3, sr2, cr7816;
-	int /*idx,*/ tictacs;
+	int idx, tictacs;
 	unsigned long flags;
-	unsigned char is7816;
+//	unsigned char is7816;
 
 	printk(KERN_ERR "YYY %s(): started\n", __func__);
 
@@ -833,7 +766,7 @@ static int iso7816_cc_atr(struct iso7816_port *ccport)
 	gpio_set_value(ccport->gpio[ISO7816_GPIO_RST], 1); // RST to H after 400 clock cycles
 
 	// tic tic tic
-/*	
+
   	for (idx=0; idx<196 * 2*372; ++idx) {
  		if (gpio_get_value(ccport->gpio[ISO7816_GPIO_CLK])) {
  			gpio_set_value(ccport->gpio[ISO7816_GPIO_CLK], 0);
@@ -842,10 +775,9 @@ static int iso7816_cc_atr(struct iso7816_port *ccport)
  		}
  		udelay(tictacs);
  	}
-/*/
-	mdelay(10);
 
-	local_irq_restore(flags);           
+	mdelay(10);
+	local_irq_restore(flags);
 
 	/* additional */
 //	mdelay(10);
@@ -875,43 +807,9 @@ static void iso7816_cc_restart_re_te(struct iso7816_port *ccport)
 	cr2 = readb(ccport->port.membase + UARTCR2);
 	cr2 |= (UARTCR2_TE | UARTCR2_RE);
 
-// for DMA, also enable the corresponding interrupts
-//	cr2 &= (UARTCR2_TE | UARTCR2_RE | UARTCR2_TIE | UARTCR2_TCIE
-//		 | UARTCR2_RIE);
-
 	writeb(cr2, ccport->port.membase + UARTCR2);
 
 }
-
-// /**
-//  * read fabrication code for testing and debugging
-//  * AT88SC256C specific command
-//  */
-// static void iso7816_cc_read_fab(struct iso7816_port *ccport)
-// {
-// 	unsigned char message[] = {0x00, 0xb6, 0x00, 0x08, 0x00}; // read address 0x08, FAB code + etc
-// 	int message_siz;
-// 
-// 	printk(KERN_ERR "YYY %s(): started\n", __func__);
-// 	message_siz = sizeof(message);
-// 
-// 	/* put message to buffer */
-// // TODO implementation for "early write" in fsl_lpuart.c		
-// //	iso7816_cc_command(ccport, message, message_siz);
-// 
-// 	/* transmit */
-// // TODO init xmit.buf	
-// //	iso7816_start_tx(&ccport->port); 
-// // or (direct)
-// 	if (readb(ccport->port.membase + UARTSR1) & UARTSR1_TDRE)
-// 		iso7816_transmit_buffer(ccport);
-// 
-// 	
-// 	/* read answer */
-// // TODO 	
-// 
-// 	printk( KERN_ERR "YYY %s(): done\n", __func__);
-// }
 
 
 /* pops functions */
@@ -923,18 +821,12 @@ static void iso7816_cc_restart_re_te(struct iso7816_port *ccport)
  */
 static unsigned int iso7816_tx_empty(struct uart_port *port)
 {
-//	struct iso7816_port *ccport = container_of(port,
-//			struct iso7816_port, port);
 	unsigned char sr1 = readb(port->membase + UARTSR1);
 	unsigned char sfifo = readb(port->membase + UARTSFIFO);
 
-// TODO no dma
-//	if (ccport->dma_tx_in_progress)
-//		return 0;
-
 	if (sr1 & UARTSR1_TC && sfifo & UARTSFIFO_TXEMPT)
 		return TIOCSER_TEMT;
-//*/
+
 	return 0;
 }
 
@@ -943,7 +835,6 @@ static unsigned int iso7816_tx_empty(struct uart_port *port)
  */
 static void iso7816_set_mctrl(struct uart_port *port, unsigned int mctrl)
 {
-//	unsigned char temp;
 	struct iso7816_port *ccport = container_of(port,
 				struct iso7816_port, port);
 
@@ -951,24 +842,6 @@ static void iso7816_set_mctrl(struct uart_port *port, unsigned int mctrl)
 		printk( KERN_ERR "YYY %s(): no modem control implemented\n", __func__);
 		return;
 	}
-
-// TODO no RS485 for chipcard
-        /* Make sure RXRTSE bit is not set when RS485 is enabled */
-//	if (!(ccport->port.rs485.flags & SER_RS485_ENABLED)) {
-
-// TODO no RTS/CTS for chipcard
-//		temp = readb(ccport->port.membase + UARTMODEM) &
-//			~(UARTMODEM_RXRTSE | UARTMODEM_TXCTSE);
-//
-//		if (mctrl & TIOCM_RTS)
-//			temp |= UARTMODEM_RXRTSE;
-//
-//		if (mctrl & TIOCM_CTS)
-//			temp |= UARTMODEM_TXCTSE;
-//
-//		writeb(temp, port->membase + UARTMODEM);
-
-//	}
 }
 
 /**
@@ -977,21 +850,11 @@ static void iso7816_set_mctrl(struct uart_port *port, unsigned int mctrl)
 static unsigned int iso7816_get_mctrl(struct uart_port *port)
 {
 	unsigned int temp = 0;
-//	unsigned char reg;
 
 	if (1 == port->minor) {
 		printk( KERN_ERR "YYY %s(): no modem control implemented\n", __func__);
 		return 0;
 	}
-
-// TODO no RTS/CTS implemented
-//	reg = readb(port->membase + UARTMODEM);
-//	if (reg & UARTMODEM_TXCTSE)
-//		temp |= TIOCM_CTS;
-//
-//	if (reg & UARTMODEM_RXRTSE)
-//		temp |= TIOCM_RTS;
-//
 	return temp;
 }
 
@@ -1002,7 +865,7 @@ static void iso7816_stop_tx(struct uart_port *port)
 {
 	unsigned char cr2;
 
-	printk( KERN_ERR "YYY %s(): started\n", __func__);    
+	printk( KERN_ERR "YYY %s(): started\n", __func__);
 
 	/* get C2 register,
 	   clear transmit interrupts (TIE) and
@@ -1024,7 +887,7 @@ static void iso7816_start_tx(struct uart_port *port)
 {
 	struct iso7816_port *ccport = container_of(port,
 			struct iso7816_port, port);
-//	struct circ_buf *xmit = &ccport->port.state->xmit;
+
 	unsigned char temp;
 
 	printk(KERN_ERR "YYY %s(): started\n", __func__);
@@ -1036,18 +899,8 @@ static void iso7816_start_tx(struct uart_port *port)
 	temp = readb(port->membase + UARTCR2);
 	writeb(temp | UARTCR2_TIE, port->membase + UARTCR2);
 
-// TODO no dma usage    	
-//	if (ccport->iso7816_dma_tx_use) {
-//		if (!uart_circ_empty(xmit) && !uart_tx_stopped(port))
-//			iso7816_dma_tx(ccport);
-//	} else {
-  	        /* transmit buffer, when the amount of data in the transmit
-		   buffer is less than or equal to the value indicated by
-		   TWFIFO[TXWATER] at some point in time since the flag has been
-		   cleared. */
-		if (readb(port->membase + UARTSR1) & UARTSR1_TDRE)
-			iso7816_transmit_buffer(ccport);
-//	}
+	if (readb(port->membase + UARTSR1) & UARTSR1_TDRE)
+		iso7816_transmit_buffer(ccport);
 }
 
 /**
@@ -1056,9 +909,6 @@ static void iso7816_start_tx(struct uart_port *port)
 static void iso7816_stop_rx(struct uart_port *port)
 {
 	unsigned char temp;
-	
-DBG_FUNCNAME2
-	
 
 	/* turn off receiver */
 	temp = readb(port->membase + UARTCR2);
@@ -1074,9 +924,6 @@ DBG_FUNCNAME2
 static void iso7816_break_ctl(struct uart_port *port, int break_state)
 {
 	unsigned char temp;
-	
-//DBG_FUNCNAME2
-	
 
 	temp = readb(port->membase + UARTCR2) & ~UARTCR2_SBK;
 
@@ -1099,10 +946,6 @@ static int iso7816_startup(struct uart_port *port)
 
 	unsigned long flags;
 	unsigned char temp;
-	
-DBG_FUNCNAME
-	
-
 
 	/* determine FIFO size and enable FIFO mode */
 	temp = readb(ccport->port.membase + UARTPFIFO);
@@ -1124,44 +967,7 @@ DBG_FUNCNAME
 	spin_lock_irqsave(&ccport->port.lock, flags);
 	iso7816_setup_watermark(ccport);
 
-// TODO not performed for ISO7816, TE and RE will be turned on later             
-//	if (1 != ccport->port.minor) {
-//		temp = readb(ccport->port.membase + UARTCR2);
-//		temp |= (UARTCR2_RIE | UARTCR2_TIE | UARTCR2_RE | UARTCR2_TE);
-//		writeb(temp, ccport->port.membase + UARTCR2);
-//	}
-
 	spin_unlock_irqrestore(&ccport->port.lock, flags);
-
-// TODO currently no dma                    
-//	if (ccport->dma_rx_chan && !iso7816_start_rx_dma(ccport)) {
-//if (1 == ccport->port.minor) { printk(KERN_ERR "YYY %s: ccport->dma_rx_chan enabled\n", __func__); }
-//		// set Rx DMA timeout
-//		ccport->dma_rx_timeout = msecs_to_jiffies(DMA_RX_TIMEOUT);
-//		if (!ccport->dma_rx_timeout)
-//		     ccport->dma_rx_timeout = 1;
-//
-//		ccport->iso7816_dma_rx_use = true;
-//		setup_timer(&ccport->iso7816_timer, iso7816_timer_func,
-//				(unsigned long)ccport);
-//		ccport->iso7816_timer.expires = jiffies + ccport->dma_rx_timeout;
-//		add_timer(&ccport->iso7816_timer);
-//	} else {
-//if (1 == ccport->port.minor) { printk(KERN_ERR "YYY %s: ccport->dma_rx_chan DISABLED!\n", __func__); }	        
-//		ccport->iso7816_dma_rx_use = false;
-//	}
-
-// TODO currently no dma		
-//	if (ccport->dma_tx_chan && !iso7816_dma_tx_request(port)) {
-//if (1 == ccport->port.minor) { printk(KERN_ERR "YYY %s: ccport->dma_tx_chan enabled\n", __func__); }		
-//		init_waitqueue_head(&ccport->dma_wait);
-//		ccport->iso7816_dma_tx_use = true;
-//		temp = readb(port->membase + UARTCR5);
-//		writeb(temp | UARTCR5_TDMAS, port->membase + UARTCR5);
-//	} else {
-//if (1 == ccport->port.minor) { printk(KERN_ERR "YYY %s: ccport->dma_tx_chan DISABLED!\n", __func__); }		
-//		ccport->iso7816_dma_tx_use = false;
-//	}
 
 	return 0;
 }
@@ -1177,8 +983,6 @@ static void iso7816_shutdown(struct uart_port *port)
 	struct iso7816_port *ccport = container_of(port, struct iso7816_port, port);
 	unsigned char temp;
 	unsigned long flags;
-	
-DBG_FUNCNAME
 
 	spin_lock_irqsave(&port->lock, flags);
 
@@ -1214,9 +1018,7 @@ iso7816_set_termios(struct uart_port *port, struct ktermios *termios,
 	unsigned int  baud;
 //	unsigned int old_csize = old ? old->c_cflag & CSIZE : CS8;
 	unsigned int sbr, brfa;
-//	int ret;
 
-		
         /* implementation for serial uart */
 
 	// read out control, baud rate and modem registers
@@ -1226,80 +1028,6 @@ iso7816_set_termios(struct uart_port *port, struct ktermios *termios,
 	cr4 = readb(ccport->port.membase + UARTCR4);
 	bdh = readb(ccport->port.membase + UARTBDH);
 	modem = readb(ccport->port.membase + UARTMODEM);
-
-// TODO cc init takes care of that      	
-//	/*
-//	 * only support CS8 and CS7, and for CS7 must enable PE.
-//	 * supported mode:
-//	 *  - (7,e/o,1)
-//	 *  - (8,n,1)
-//	 *  - (8,m/s,1)
-//	 *  - (8,e/o,1)
-//	 */
-//	while ((termios->c_cflag & CSIZE) != CS8 &&
-//		(termios->c_cflag & CSIZE) != CS7) {
-//		termios->c_cflag &= ~CSIZE;
-//		termios->c_cflag |= old_csize;
-//		old_csize = CS8;
-//	}
-//
-//	if ((termios->c_cflag & CSIZE) == CS8 ||
-//		(termios->c_cflag & CSIZE) == CS7)
-//		cr1 = old_cr1 & ~UARTCR1_M;
-//
-//	if (termios->c_cflag & CMSPAR) {
-//		if ((termios->c_cflag & CSIZE) != CS8) {
-//			termios->c_cflag &= ~CSIZE;
-//			termios->c_cflag |= CS8;
-//		}
-//		cr1 |= UARTCR1_M;
-//	}
-
-// TODO no RS485 for cc                             
-//	/*
-//	 * When auto RS-485 RTS mode is enabled,
-//	 * hardware flow control need to be disabled.
-//	 */
-//	if (ccport->port.rs485.flags & SER_RS485_ENABLED)
-//		termios->c_cflag &= ~CRTSCTS;
-
-// TODO no RTS/CTS support for cc                      
-//	/* RTS/CTS */
-//	if (termios->c_cflag & CRTSCTS) {
-//		modem |= (UARTMODEM_RXRTSE | UARTMODEM_TXCTSE);
-//	} else {
-//		termios->c_cflag &= ~CRTSCTS;
-//		modem &= ~(UARTMODEM_RXRTSE | UARTMODEM_TXCTSE);
-//	}
-
-// TODO cc init takes care of that      		
-//	/* stop bit */
-//	if (termios->c_cflag & CSTOPB)
-//		termios->c_cflag &= ~CSTOPB;
-
-// TODO cc init takes care of that      		
-//	/* parity must be enabled when CS7 to match 8-bits format */
-//	if ((termios->c_cflag & CSIZE) == CS7)
-//		termios->c_cflag |= PARENB;
-//
-//	/* parenty bit */
-//	if ((termios->c_cflag & PARENB)) {
-//		if (termios->c_cflag & CMSPAR) {
-//			cr1 &= ~UARTCR1_PE;
-//			if (termios->c_cflag & PARODD)
-//				cr3 |= UARTCR3_T8;
-//			else
-//				cr3 &= ~UARTCR3_T8;
-//		} else {
-//			cr1 |= UARTCR1_PE;
-//			if ((termios->c_cflag & CSIZE) == CS8)
-//				cr1 |= UARTCR1_M;
-//			if (termios->c_cflag & PARODD)
-//				cr1 |= UARTCR1_PT;
-//			else
-//				cr1 &= ~UARTCR1_PT;
-//		}
-//	}
 
 	/* ask the core to calculate the divisor */
 	baud = uart_get_baud_rate(port, termios, old, 50, port->uartclk / 16);
@@ -1311,25 +1039,6 @@ iso7816_set_termios(struct uart_port *port, struct ktermios *termios,
 		ccport->port.read_status_mask |= (UARTSR1_FE | UARTSR1_PE);
 	if (termios->c_iflag & (IGNBRK | BRKINT | PARMRK))
 		ccport->port.read_status_mask |= UARTSR1_FE;
-
-// TODO cc init takes care of that      		
-//	/* characters to ignore */
-//	ccport->port.ignore_status_mask = 0;
-//	if (termios->c_iflag & IGNPAR)
-//		ccport->port.ignore_status_mask |= UARTSR1_PE;
-//	if (termios->c_iflag & IGNBRK) {
-//		ccport->port.ignore_status_mask |= UARTSR1_FE;
-//		/*
-//		 * if we're ignoring parity and break indicators,
-//		 * ignore overruns too (for real raw support).
-//		 */
-//		if (termios->c_iflag & IGNPAR)
-//			ccport->port.ignore_status_mask |= UARTSR1_OR;
-//	}
-
-// TODO cc init takes care of that      		
-//	/* update the per-port timeout */
-//	uart_update_timeout(port, termios->c_cflag, baud);
 
 // TODO check if this is needed 	
 	/* wait transmit engin complete */
@@ -1356,29 +1065,6 @@ iso7816_set_termios(struct uart_port *port, struct ktermios *termios,
 
 	/* restore control register 2, i.e. turn TE and RE on */
 	writeb(old_cr2, ccport->port.membase + UARTCR2);
-
-// TODO no dma      			
-//	/*
-//	 * If new baud rate is set, we will also need to update the Ring buffer
-//	 * length according to the selected baud rate and restart Rx DMA path.
-//	 */
-//	if (old) {
-//		if (ccport->iso7816_dma_rx_use) {
-//			del_timer_sync(&ccport->iso7816_timer);
-//			iso7816_dma_rx_free(&ccport->port);
-//		}
-//
-//		if (ccport->dma_rx_chan && !iso7816_start_rx_dma(ccport)) {
-//			ccport->iso7816_dma_rx_use = true;
-//			setup_timer(&ccport->iso7816_timer, iso7816_timer_func,
-//					(unsigned long)ccport);
-//			ccport->iso7816_timer.expires =
-//					jiffies + ccport->dma_rx_timeout;
-//			add_timer(&ccport->iso7816_timer);
-//		} else {
-//			ccport->iso7816_dma_rx_use = false;
-//		}
-//	}
 	spin_unlock_irqrestore(&ccport->port.lock, flags);
 
 	// don't allow further settings for iso7816 port
@@ -1452,18 +1138,7 @@ static int iso7816_verify_port(struct uart_port *port, struct serial_struct *ser
  * pops function: flush_buffer()
  */
 static void iso7816_flush_buffer(struct uart_port *port)
-{
-// TODO no dma used so far	
-//	struct iso7816_port *ccport = container_of(port, struct iso7816_port, port);
-//	if (ccport->iso7816_dma_tx_use) {
-//		if (ccport->dma_tx_in_progress) {
-//			dma_unmap_sg(ccport->port.dev, &ccport->tx_sgl[0],
-//				ccport->dma_tx_nents, DMA_TO_DEVICE);
-//			ccport->dma_tx_in_progress = false;
-//		}
-//		dmaengine_terminate_all(ccport->dma_tx_chan);
-//	}
-}
+{}
 
 /**
  * helper function: rxint()
@@ -1477,14 +1152,6 @@ static irqreturn_t iso7816_rxint(int irq, void *dev_id)
 	struct tty_port *port = &ccport->port.state->port;
 	unsigned long flags;
 //	unsigned char rx, sr;
-/*	
-DBG_FUNCNAME
-/*/	
-//	if (1 == ccport->port.minor) { // YYY
-		printk( KERN_ERR "YYY %s(): stubbed\n", __func__);
-		goto out;
-//	}
-//*/
 
 // TODO can we handl parity, overrun and framing error in cc reading???		
 //	spin_lock_irqsave(&ccport->port.lock, flags);
@@ -1543,7 +1210,7 @@ DBG_FUNCNAME
 //		tty_insert_flip_char(port, rx, flg);
 //	}
 //
-out:
+//out:
 	spin_unlock_irqrestore(&ccport->port.lock, flags);
 
 	tty_flip_buffer_push(port);
@@ -1563,44 +1230,20 @@ static irqreturn_t iso7816_txint(int irq, void *dev_id)
 
 	spin_lock_irqsave(&ccport->port.lock, flags);
 
-	
-	if (1 == ccport->port.minor) { // TODO YYY
-		printk( KERN_ERR "YYY %s(): stubbed\n", __func__);
-		goto out;
-	}
-	
 
 	/* need to write x_char from buffer into D register */
 	if (ccport->port.x_char) {
-// TODO no 32 bit implementation		
-//		if (ccport->iso781632)
-//			iso781632_write(ccport->port.x_char, ccport->port.membase + UARTDATA);
-//		else
-			writeb(ccport->port.x_char, ccport->port.membase + UARTDR);
+		writeb(ccport->port.x_char, ccport->port.membase + UARTDR);
 		goto out;
 	}
 
 	/* need to stop tx */
 	if (uart_circ_empty(xmit) || uart_tx_stopped(&ccport->port)) {
-// TODO no 32 bit implementation		
-//		if (ccport->iso781632)
-//			iso781632_stop_tx(&ccport->port);
-//		else
-			iso7816_stop_tx(&ccport->port);
+		iso7816_stop_tx(&ccport->port);
 		goto out;
 	}
 
-	/* need to transmit entire buffer */
-// TODO no 32 bit implementation		
-//	if (ccport->iso781632)
-//		iso781632_transmit_buffer(ccport);
-//	else
-		iso7816_transmit_buffer(ccport);
-
-	/* wake characters */
-// TODO do we have WAKEUP_CHARs for chipcards?		
-//	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
-//		uart_write_wakeup(&ccport->port);
+	iso7816_transmit_buffer(ccport);
 
 out:
 	spin_unlock_irqrestore(&ccport->port.lock, flags);
@@ -1628,208 +1271,6 @@ static irqreturn_t iso7816_int(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-
-/**
- * helper function iso7816_copy_rx_to_tty()
- */
-// TODO currently not used
-//static void iso7816_copy_rx_to_tty(struct iso7816_port *ccport)
-//{
-//*
-// TODO needs implementation		
-//		printk( KERN_ERR "YYY %s(): stubbed\n", __func__);
-//		return;
-/*/
-	struct tty_port *port = &ccport->port.state->port;
-	struct dma_tx_state state;
-	enum dma_status dmastat;
-	struct circ_buf *ring = &ccport->rx_ring;
-	unsigned long flags;
-	int count = 0;
-	unsigned char sr;
-
-//	if (1 == ccport->port.minor) {
-		printk( KERN_ERR "YYY %s(): TEST copy rx to out\n", __func__);
-
-		sr = readb(ccport->port.membase + UARTSR1);
-
-		if (sr & (UARTSR1_PE | UARTSR1_FE)) {
-//			/ * Read DR to clear the error flags * /
-			readb(ccport->port.membase + UARTDR);
-
-			if (sr & UARTSR1_PE)
-				ccport->port.icount.parity++;
-			else if (sr & UARTSR1_FE)
-				ccport->port.icount.frame++;
-		}
-
-
-//		async_tx_ack(ccport->dma_rx_desc); // TODO rm, no active ack in iso7816
-
-		spin_lock_irqsave(&ccport->port.lock, flags);
-
-// TODO check, no ack sent, do we need to check for dmaengine_TX_status() ?
-		dmastat = dmaengine_tx_status(ccport->dma_rx_chan,
-					      ccport->dma_rx_cookie,
-					      &state);
-
-		if (dmastat == DMA_ERROR) {
-//			dev_err(ccport->port.dev, "Rx DMA transfer failed!\n");  
-			pr_err( "Rx DMA transfer failed!\n");  
-			spin_unlock_irqrestore(&ccport->port.lock, flags);
-			return;
-		}
-
-//		/ * CPU claims ownership of RX DMA buffer * /
-		dma_sync_sg_for_cpu(ccport->port.dev, &ccport->rx_sgl, 1, DMA_FROM_DEVICE);
-
-//		/ *
-//		 * ring->head points to the end of data already written by the DMA.
-//		 * ring->tail points to the beginning of data to be read by the
-//		 * framework.
-//		 * The current transfer size should not be larger than the dma buffer
-//		 * length.
-//		 * /
-		ring->head = ccport->rx_sgl.length - state.residue;
-		BUG_ON(ring->head > ccport->rx_sgl.length);
-//		/ *
-//		 * At this point ring->head may point to the first byte right after the
-//		 * last byte of the dma buffer:
-//		 * 0 <= ring->head <= ccport->rx_sgl.length
-//		 *
-//		 * However ring->tail must always points inside the dma buffer:
-//		 * 0 <= ring->tail <= ccport->rx_sgl.length - 1
-//		 *
-//		 * Since we use a ring buffer, we have to handle the case
-//		 * where head is lower than tail. In such a case, we first read from
-//		 * tail to the end of the buffer then reset tail.
-//		 * /
-		if (ring->head < ring->tail) {
-			count = ccport->rx_sgl.length - ring->tail;
-
-			tty_insert_flip_string(port, ring->buf + ring->tail, count);
-			ring->tail = 0;
-			ccport->port.icount.rx += count;
-		}
-
-//		/ * Finally we read data from tail to head * /
-		if (ring->tail < ring->head) {
-			count = ring->head - ring->tail;
-			tty_insert_flip_string(port, ring->buf + ring->tail, count);
-//			/ * Wrap ring->head if needed * /
-			if (ring->head >= ccport->rx_sgl.length)
-				ring->head = 0;
-			ring->tail = ring->head;
-			ccport->port.icount.rx += count;
-		}
-
-		dma_sync_sg_for_device(ccport->port.dev, &ccport->rx_sgl, 1,
-				       DMA_FROM_DEVICE);
-
-		spin_unlock_irqrestore(&ccport->port.lock, flags);
-
-		tty_flip_buffer_push(port);
-		mod_timer(&ccport->iso7816_timer, jiffies + ccport->dma_rx_timeout);
-
-                return;
-	}
-
-
-	sr = readb(ccport->port.membase + UARTSR1);
-
-	if (sr & (UARTSR1_PE | UARTSR1_FE)) {
-//		/ * Read DR to clear the error flags * /
-		readb(ccport->port.membase + UARTDR);
-
-		if (sr & UARTSR1_PE)
-		    ccport->port.icount.parity++;
-		else if (sr & UARTSR1_FE)
-		    ccport->port.icount.frame++;
-	}
-
-	async_tx_ack(ccport->dma_rx_desc);
-
-	spin_lock_irqsave(&ccport->port.lock, flags);
-
-	dmastat = dmaengine_tx_status(ccport->dma_rx_chan,
-				ccport->dma_rx_cookie,
-				&state);
-
-	if (dmastat == DMA_ERROR) {
-//		dev_err(ccport->port.dev, "Rx DMA transfer failed!\n");  
-                pr_err( "Rx DMA transfer failed!\n");
-		spin_unlock_irqrestore(&ccport->port.lock, flags);
-		return;
-	}
-
-//	/ * CPU claims ownership of RX DMA buffer * /
-	dma_sync_sg_for_cpu(ccport->port.dev, &ccport->rx_sgl, 1, DMA_FROM_DEVICE);
-
-//	/ *
-//	 * ring->head points to the end of data already written by the DMA.
-//	 * ring->tail points to the beginning of data to be read by the
-//	 * framework.
-//	 * The current transfer size should not be larger than the dma buffer
-//	 * length.
-//	 * /
-	ring->head = ccport->rx_sgl.length - state.residue;
-	BUG_ON(ring->head > ccport->rx_sgl.length);
-//	/ *
-//	 * At this point ring->head may point to the first byte right after the
-//	 * last byte of the dma buffer:
-//	 * 0 <= ring->head <= ccport->rx_sgl.length
-//	 *
-//	 * However ring->tail must always points inside the dma buffer:
-//	 * 0 <= ring->tail <= ccport->rx_sgl.length - 1
-//	 *
-//	 * Since we use a ring buffer, we have to handle the case
-//	 * where head is lower than tail. In such a case, we first read from
-//	 * tail to the end of the buffer then reset tail.
-//	 * /
-	if (ring->head < ring->tail) {
-		count = ccport->rx_sgl.length - ring->tail;
-
-		tty_insert_flip_string(port, ring->buf + ring->tail, count);
-		ring->tail = 0;
-		ccport->port.icount.rx += count;
-	}
-
-//	/ * Finally we read data from tail to head * /
-	if (ring->tail < ring->head) {
-		count = ring->head - ring->tail;
-		tty_insert_flip_string(port, ring->buf + ring->tail, count);
-//		/ * Wrap ring->head if needed * /
-		if (ring->head >= ccport->rx_sgl.length)
-			ring->head = 0;
-		ring->tail = ring->head;
-		ccport->port.icount.rx += count;
-	}
-
-	dma_sync_sg_for_device(ccport->port.dev, &ccport->rx_sgl, 1,
-			       DMA_FROM_DEVICE);
-
-	spin_unlock_irqrestore(&ccport->port.lock, flags);
-
-	tty_flip_buffer_push(port);
-	mod_timer(&ccport->iso7816_timer, jiffies + ccport->dma_rx_timeout);
-//*/
-//}
-
-
-/**
- * helper function timer_func()
- *
- * to be set as:
- *     setup_timer(&ccport->iso7816_timer, iso7816_timer_func,
- *             (unsigned long)ccport);
- *
- */
-//static void iso7816_timer_func(unsigned long data)
-//{
-//	struct iso7816_port *ccport = (struct iso7816_port *)data;
-//
-//	iso7816_copy_rx_to_tty(ccport);
-//}
 
 /**
  * helper function transmit_buffer()
@@ -1887,19 +1328,12 @@ static struct uart_ops iso7816_pops = {
 struct iso7816_port *iso7816_ports[ISO7816_UART_NR];
 
 
-                                                                      
-// TODO set up 'CONFIG_SERIAL_ISO7816_CONSOLE'                     
-//#ifdef CONFIG_SERIAL_ISO7816_CONSOLE
 #ifdef CONFIG_SERIAL_FSL_LPUART_CONSOLE
-// TODO --> init__, register with iso7816_console instead of iso7816_reg
-                                                                      
-
-
-
 
 
 /* functions - CONFIG_SERIAL_ISO7816_CONSOLE */
 /* aka CONFIG_SERIAL_FSL_LPUART_CONSOLE */
+
 
 /**
  * putchar for console
@@ -1938,12 +1372,9 @@ static void iso7816_console_putchar(struct uart_port *port, int ch)
 static void
 iso7816_console_write(struct console *co, const char *str, unsigned int count)
 {
-//DBG_FUNCNAME - noisy
 	struct iso7816_port *ccport = iso7816_ports[co->index];
 	unsigned char  old_cr2, cr2;
-	
-DBG_FUNCNAME
-	
+
 // TODO check this implementation - usefull for chipcard communication?            
 	/* enable RX/TX, disable TX/RX interrupts */
 	cr2 = old_cr2 = readb(ccport->port.membase + UARTCR2);
@@ -1961,37 +1392,6 @@ DBG_FUNCNAME
 	/* and restore CR2 */
 	writeb(old_cr2, ccport->port.membase + UARTCR2);
 }
-
-
-// static void
-// iso7816_cc_command(struct iso7816_port *ccport, const unsigned char *str, unsigned int count)
-// {
-// //	unsigned char  old_cr2, cr2;  
-// 
-// 	printk( KERN_ERR "YYY %s(): started\n", __func__);
-// 	printk( KERN_ERR "YYY %s(): str = '%s'\n", __func__, str);
-// 	printk( KERN_ERR "YYY %s(): count = '%d'\n", __func__, count);
-// 
-// 	/* enable RX/TX, disable TX/RX interrupts */
-// // TODO cosmetics - is this needed?     	
-// //	cr2 = old_cr2 = readb(ccport->port.membase + UARTCR2);
-// //	cr2 |= (UARTCR2_TE |  UARTCR2_RE);
-// //	cr2 &= ~(UARTCR2_TIE | UARTCR2_TCIE | UARTCR2_RIE);
-// //	writeb(cr2, ccport->port.membase + UARTCR2);
-// 
-// 	/* write character to transmit buffer */
-// 	uart_console_write(&ccport->port, str, count, iso7816_console_putchar);
-// 
-// 	/* wait for transmitter finish complete */
-// // TODO problematic: FIXME	
-// // "when C7816[ISO_7816E] is enabled this field is set after any NACK signal has been received, but prior to any corresponding guard times expiring"
-// //	while (!(readb(ccport->port.membase + UARTSR1) & UARTSR1_TC))
-// //		barrier();
-// 
-// 
-// 	/* and restore CR2 */
-// //	writeb(old_cr2, ccport->port.membase + UARTCR2);  
-// }
 
 
 /**
@@ -2012,8 +1412,6 @@ iso7816_console_get_options(struct iso7816_port *ccport, int *baud,
 
 	unsigned char cr, bdh, bdl, brfa;
 	unsigned int sbr, uartclk, baud_raw;
-
-//	if (1 != ccport->port.minor) { // TODO check if needed              
 
 	/* check if transmitter and receiver are enabled */
 	cr = readb(ccport->port.membase + UARTCR2);
@@ -2038,8 +1436,6 @@ iso7816_console_get_options(struct iso7816_port *ccport, int *baud,
 		*bits = 9;
 	else
 		*bits = 8;
-
-//	}    
 
 	/* bdh and bdl: setup as is in fsl_lpuart */
 	bdh = readb(ccport->port.membase + UARTBDH);
@@ -2070,14 +1466,12 @@ iso7816_console_get_options(struct iso7816_port *ccport, int *baud,
 static int __init iso7816_console_setup(struct console *co, char *options)
 {
 	struct iso7816_port *ccport;
-// TODO check console configuration 	
 	int baud = 115200;
 	int bits = 8;
 	int parity = 'n';
 	int flow = 'n';
 
-
-	printk(KERN_ERR "YYY iso7816::%s()\n", __func__); // TODO 1. test: module comes up            
+	printk(KERN_ERR "YYY iso7816::%s()\n", __func__);
 
 	/* console index */
 	if (co->index == -1 || co->index >= ARRAY_SIZE(iso7816_ports)) {
@@ -2092,26 +1486,6 @@ static int __init iso7816_console_setup(struct console *co, char *options)
 		return -ENODEV;
 	}
 
-//	/* device */
-//	do {
-//		np = of_find_node_by_type( np, "serial"); // TODO check type            
-//		if (!np)
-//			return -ENODEV;
-//
-//
-//		if (!of_device_is_compatible(np, "nxp,iso7816")) {
-//			--idx;
-//		}
-//	} while (++idx != co->index);
-//
-//	/* gpios */
-//	ret = iso7816_cc_init_gpios(np, ccport);
-//	of_node_put(np);
-//	if (ret)
-//		return ret;
-
-// TODO cpm: init struct tserial_core::port 	    
-
 	/* evaluate options, or read out initialized uart e.g. by bootloader */
 	if (options)
 		uart_parse_options(options, &baud, &parity, &bits, &flow);
@@ -2121,21 +1495,14 @@ static int __init iso7816_console_setup(struct console *co, char *options)
 	/* reset uart */
 	iso7816_setup_watermark(ccport);
 
-// TODO why is the following at this location?  	
-//	ret = platform_driver_register(&iso7816_driver); 
-//	if (ret) 
-//		uart_unregister_driver(&iso7816_reg); 
-
-
 	/* finally, set options in serial core driver */
 	return uart_set_options(&ccport->port, co, baud, parity, bits, flow);
 }
 
-// TODO          
-
 
 /* structs - CONFIG_SERIAL_ISO7816_CONSOLE (after coresponding funcs) */
 /* aka CONFIG_SERIAL_FSL_LPUART_CONSOLE */
+
 
 static struct uart_driver iso7816_reg;
 static struct console iso7816_console = {
@@ -2149,14 +1516,15 @@ static struct console iso7816_console = {
 };
 
 
-// TODO check if this is really needed
+
 #define ISO7816_CONSOLE        &iso7816_console
 #else
 #define ISO7816_CONSOLE        NULL
-#endif /* CONFIG_SERIAL_ISO7816_CONSOLE aka CONFIG_SERIAL_FSL_LPUART_CONSOLE */
+#endif /* CONFIG_SERIAL_ISO7816_CONSOLE aka CONFIG_SERIAL_FSL_LPUART_CONSOLE or similar LPUART */
 
 
 /* structs - trailer */
+
 
 static struct uart_driver iso7816_reg = {
 	.owner          = THIS_MODULE,
@@ -2167,8 +1535,6 @@ static struct uart_driver iso7816_reg = {
 	.cons           = ISO7816_CONSOLE,
 	.nr		= ISO7816_UART_NR, // should be only one, but for bringup as a quickfix set '6' // */
 };
-
-
 
 
 /* functions - trailer */
@@ -2271,19 +1637,6 @@ static int iso7816_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-// TODO rm - we don't need dma (currently)  	
-//	if (!nodma) {
-//		ccport->dma_tx_chan = iso7816_request_dma_chan(ccport, "tx");
-//		ccport->dma_rx_chan = iso7816_request_dma_chan(ccport, "rx");
-//	}
-
-// TODO no rs485 for chipcard needed	
-//	if (of_property_read_bool(np, "linux,rs485-enabled-at-boot-time")) {
-//		ccport->port.rs485.flags |= SER_RS485_ENABLED;
-//		ccport->port.rs485.flags |= SER_RS485_RTS_ON_SEND;
-//		writeb(UARTMODEM_TXRTSE, ccport->port.membase + UARTMODEM);
-//	}
-
         if (of_property_read_bool(np, "linux,iso7816-enabled-at-boot-time")) {
 		printk(KERN_ERR "YYY DTB entry 'linux,iso7816-enabled-at-boot-time' - FOUND!!! YYY\n"); // YYY
 
@@ -2318,8 +1671,8 @@ static int iso7816_probe(struct platform_device *pdev)
 	iso7816_cc_restart_re_te(ccport);
 
 	/* debugging: read out FAB code */
-//	iso7816_cc_read_fab(ccport); 
-	
+//	iso7816_cc_read_fab(ccport);
+
 	/* debugging */
 //	iso7816_cc_report(ccport);
 
@@ -2339,129 +1692,9 @@ static int iso7816_remove(struct platform_device *pdev)
 
 	clk_disable_unprepare(ccport->clk);
 
-// TODO currently no dma	
-//	if (ccport->dma_tx_chan)
-//		dma_release_channel(ccport->dma_tx_chan);
-//	if (ccport->dma_rx_chan)
-//		dma_release_channel(ccport->dma_rx_chan);
-
-// TODO gpio_free();
-
 	return 0;
 }
 
-
-
-
-/*   // TODO in case set up suspend and hibernation capability, use the following
-
-#ifdef CONFIG_PM_SLEEP
-static int iso7816_suspend(struct device *dev)
-{
-	struct iso7816_port *ccport = dev_get_drvdata(dev);
-	unsigned long temp;
-	
-DBG_FUNCNAME
-
-//	if (ccport->iso781632) {
-////		/ * disable Rx/Tx and interrupts * /
-//		temp = iso781632_read(ccport->port.membase + UARTCTRL);
-//		temp &= ~(UARTCTRL_TE | UARTCTRL_TIE | UARTCTRL_TCIE);
-//		iso781632_write(temp, ccport->port.membase + UARTCTRL);
-//	} else {
-//		/ * disable Rx/Tx and interrupts * /
-		temp = readb(ccport->port.membase + UARTCR2);
-		temp &= ~(UARTCR2_TE | UARTCR2_TIE | UARTCR2_TCIE);
-		writeb(temp, ccport->port.membase + UARTCR2);
-//	}
-
-	uart_suspend_port(&iso7816_reg, &ccport->port);
-
-	if (ccport->iso7816_dma_rx_use) {
-//		/ *
-//		 * EDMA driver during suspend will forcefully release any
-//		 * non-idle DMA channels. If port wakeup is enabled or if port
-//		 * is console port or 'no_console_suspend' is set the Rx DMA
-//		 * cannot resume as as expected, hence gracefully release the
-//		 * Rx DMA path before suspend and start Rx DMA path on resume.
-//		 * /
-		if (ccport->port.irq_wake) {
-			del_timer_sync(&ccport->iso7816_timer);
-			iso7816_dma_rx_free(&ccport->port);
-		}
-
-		// * Disable Rx DMA to use UART port as wakeup source * /
-		writeb(readb(ccport->port.membase + UARTCR5) & ~UARTCR5_RDMAS,
-					ccport->port.membase + UARTCR5);
-	}
-
-	if (ccport->iso7816_dma_tx_use) {
-		ccport->dma_tx_in_progress = false;
-		dmaengine_terminate_all(ccport->dma_tx_chan);
-	}
-
-	if (ccport->port.suspended && !ccport->port.irq_wake)
-		clk_disable_unprepare(ccport->clk);
-
-	return 0;
-}
-
-static int iso7816_resume(struct device *dev)
-{
-	struct iso7816_port *ccport = dev_get_drvdata(dev);
-	unsigned long temp;
-	
-DBG_FUNCNAME
-
-	if (ccport->port.suspended && !ccport->port.irq_wake)
-		clk_prepare_enable(ccport->clk);
-
-//	if (ccport->iso781632) {
-//		iso781632_setup_watermark(ccport);
-//		temp = iso781632_read(ccport->port.membase + UARTCTRL);
-//		temp |= (UARTCTRL_RIE | UARTCTRL_TIE | UARTCTRL_RE |
-//			 UARTCTRL_TE | UARTCTRL_ILIE);
-//		iso781632_write(temp, ccport->port.membase + UARTCTRL);
-//	} else {
-		iso7816_setup_watermark(ccport);
-		temp = readb(ccport->port.membase + UARTCR2);
-		temp |= (UARTCR2_RIE | UARTCR2_TIE | UARTCR2_RE | UARTCR2_TE);
-		writeb(temp, ccport->port.membase + UARTCR2);
-//	}
-
-	if (ccport->iso7816_dma_rx_use) {
-		if (ccport->port.irq_wake) {
-			if (!iso7816_start_rx_dma(ccport)) {
-				ccport->iso7816_dma_rx_use = true;
-				setup_timer(&ccport->iso7816_timer,
-						iso7816_timer_func,
-						(unsigned long)ccport);
-				ccport->iso7816_timer.expires = jiffies +
-						ccport->dma_rx_timeout;
-				add_timer(&ccport->iso7816_timer);
-			} else {
-				ccport->iso7816_dma_rx_use = false;
-			}
-		}
-	}
-
-	if (ccport->dma_tx_chan && !iso7816_dma_tx_request(&ccport->port)) {
-			init_waitqueue_head(&ccport->dma_wait);
-			ccport->iso7816_dma_tx_use = true;
-			writeb(readb(ccport->port.membase + UARTCR5) |
-				UARTCR5_TDMAS, ccport->port.membase + UARTCR5);
-	} else {
-		ccport->iso7816_dma_tx_use = false;
-	}
-
-	uart_resume_port(&iso7816_reg, &ccport->port);
-
-	return 0;
-}
-#endif
-
-static SIMPLE_DEV_PM_OPS(iso7816_pm_ops, iso7816_suspend, iso7816_resume);
-//*/
 
 static struct platform_driver iso7816_driver = {
 	.probe		= iso7816_probe,
@@ -2469,7 +1702,6 @@ static struct platform_driver iso7816_driver = {
 	.driver		= {
 		.name	= DRIVER_NAME,
 		.of_match_table = iso7816_dt_ids,
-/*		.pm	= &iso7816_pm_ops,  // TODO is pm needed? */       
 	},
 };
 
